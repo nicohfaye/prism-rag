@@ -1,0 +1,13 @@
+# Profile: local Ollama inference for both embeddings and generation.
+embedding:
+  provider: ollama
+  model: nomic-embed-text
+generation:
+  provider: ollama
+  model: gpt-oss:20b
+milvus:
+  uri: http://localhost:19530
+  default_collection: prism_default
+chunking:
+  chunk_size: 512
+  chunk_overlap: 52

@@ -1,0 +1,13 @@
+# Profile: OpenAI-hosted embeddings and generation.
+embedding:
+  provider: openai
+  model: text-embedding-3-small
+generation:
+  provider: openai
+  model: gpt-4o-mini
+milvus:
+  uri: http://localhost:19530
+  default_collection: prism_default
+chunking:
+  chunk_size: 512
+  chunk_overlap: 52

@@ -3,92 +3,39 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
+
+# Distribution / packaging
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
 *.egg
-.uv/
+
+# uv / venv
 .venv/
 venv/
-ENV/
-env/
 
-# Python testing/coverage
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
+# Testing
 .pytest_cache/
+.coverage
+htmlcov/
 
-# Node/Next.js
-node_modules/
-.next/
-out/
-.nuxt
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
 
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
-
-# Production
-/build
-/dist
-
-# Environment variables
+# Env
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Data
+data/
+docker/volumes/
+*.db
+*.sqlite
+*.sqlite3
 
-# IDEs and editors
-.idea/
-.vscode/
-*.swp
-*.swo
-.DS_Store
-*.sublime-workspace
-.history
-
-# OS files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Logs
+*.log
+logs/
