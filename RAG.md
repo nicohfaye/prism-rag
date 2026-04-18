@@ -5,11 +5,13 @@ A modular, containerized RAG pipeline built as a personal learning project, root
 ## Goals & non-goals
 
 **Goals**
+
 - Production-quality patterns: SRP, provider-swappable components, clear module boundaries, typed config, idempotent ingestion, observable execution.
 - CLI-first human interface; retrieval surface designed to later expose over MCP for agent use.
 - Provider pluggability: embedding and generation models swappable between OpenAI and Ollama via config.
 
 **Non-goals (v1)**
+
 - Multi-tenancy, auth, or user management.
 - Distributed deployment (single-host Docker Compose is enough).
 - Neo4j / GraphRAG (deferred to a later phase).
@@ -18,21 +20,21 @@ A modular, containerized RAG pipeline built as a personal learning project, root
 
 ## Tech stack
 
-| Concern | Choice |
-|---|---|
-| Language / runtime | Python 3.11+ |
-| Package manager | `uv` (astral) |
-| Orchestration framework | LangChain |
-| Vector DB | Milvus (standalone, v2.4+ for hybrid search) |
-| Embeddings | OpenAI `text-embedding-3-small/large` **or** Ollama (`nomic-embed-text` / `mxbai-embed-large`) |
-| Generation | OpenAI (`gpt-4o` family) **or** Ollama `gpt-oss:20b` |
-| Vision captioning | Same provider abstraction (OpenAI vision or Ollama vision model) |
-| Reranker | `bge-reranker-v2-m3` (local) — alt: Cohere Rerank |
-| Idempotency store | SQLite sidecar |
-| CLI | `typer` + `rich` |
-| Config | `pydantic-settings` + YAML profiles |
-| Logging | stdlib structured logging + `rich`; optional LangSmith toggle |
-| Containerization | Docker + Docker Compose |
+| Concern                 | Choice                                                                                         |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| Language / runtime      | Python 3.11+                                                                                   |
+| Package manager         | `uv` (astral)                                                                                  |
+| Orchestration framework | LangChain                                                                                      |
+| Vector DB               | Milvus (standalone, v2.4+ for hybrid search)                                                   |
+| Embeddings              | OpenAI `text-embedding-3-small/large` **or** Ollama (`nomic-embed-text` / `mxbai-embed-large`) |
+| Generation              | OpenAI (`gpt-4o` family) **or** Ollama `gpt-oss:20b`                                           |
+| Vision captioning       | Same provider abstraction (OpenAI vision or Ollama vision model)                               |
+| Reranker                | `bge-reranker-v2-m3` (local) — alt: Cohere Rerank                                              |
+| Idempotency store       | SQLite sidecar                                                                                 |
+| CLI                     | `typer` + `rich`                                                                               |
+| Config                  | `pydantic-settings` + YAML profiles                                                            |
+| Logging                 | stdlib structured logging + `rich`; optional LangSmith toggle                                  |
+| Containerization        | Docker + Docker Compose                                                                        |
 
 ## Architecture overview
 
@@ -67,12 +69,12 @@ A modular, containerized RAG pipeline built as a personal learning project, root
 
 ## Document support (v1)
 
-| Type | Loader | Notes |
-|---|---|---|
-| Markdown | `UnstructuredMarkdownLoader` / markdown-aware splitter | Preserves headings as metadata |
-| PDF | `PyMuPDFLoader` (layout-aware) | Page numbers tracked as metadata |
-| HTML | `UnstructuredHTMLLoader` / `BeautifulSoup` cleanup | |
-| Images | Vision LLM captioning → text | Single modality (text embeddings only) |
+| Type     | Loader                                                 | Notes                                  |
+| -------- | ------------------------------------------------------ | -------------------------------------- |
+| Markdown | `UnstructuredMarkdownLoader` / markdown-aware splitter | Preserves headings as metadata         |
+| PDF      | `PyMuPDFLoader` (layout-aware)                         | Page numbers tracked as metadata       |
+| HTML     | `UnstructuredHTMLLoader` / `BeautifulSoup` cleanup     |                                        |
+| Images   | Vision LLM captioning → text                           | Single modality (text embeddings only) |
 
 ## Chunking
 
@@ -179,27 +181,35 @@ Single `docker-compose.yml` with profiles:
 ## Phased build plan
 
 **Phase 0 — Scaffolding**
+
 - `uv` project layout, module skeleton, Dockerfile + compose with Milvus, logging, Pydantic config, empty CLI.
 
 **Phase 1 — Minimum ingest + query (OpenAI only)**
+
 - Markdown + PDF loaders, structure-aware chunking, OpenAI embeddings, Milvus collection + insertion, dense-only retrieval, OpenAI generation, SQLite registry. `ingest` and `query` commands working end-to-end.
 
 **Phase 2 — Provider swap**
+
 - Ollama embeddings + generation behind the same interfaces. Config profiles for `openai` and `local`.
 
 **Phase 3 — Modern retrieval**
+
 - BM25 + dense hybrid search. `bge-reranker-v2-m3` reranker. Streaming generation. `retrieve` JSON command.
 
 **Phase 4 — Expanded doc support**
+
 - HTML loader. Image loader via vision-LLM captioning.
 
 **Phase 5 — Evaluation**
+
 - `eval run` command with hit-rate@k and MRR against a seed Q&A dataset.
 
 **Phase 6 — Agent surface (deferred)**
+
 - MCP server exposing `retrieve` as a tool.
 
 **Phase 7 — GraphRAG (deferred)**
+
 - Neo4j + entity/relation extraction layered onto ingestion; graph-aware retrieval fused with vector retrieval.
 
 ## Open questions for later phases
