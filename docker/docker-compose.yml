@@ -1,16 +1,18 @@
+name: ${COMPOSE_PROJECT_NAME}
 services:
   etcd:
-    container_name: milvus-etcd
     image: quay.io/coreos/etcd:v3.5.14
+    restart: unless-stopped
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
       - ETCD_AUTO_COMPACTION_RETENTION=1000
       - ETCD_QUOTA_BACKEND_BYTES=4294967296
       - ETCD_SNAPSHOT_COUNT=50000
     volumes:
-      - ./volumes/etcd:/etcd
-    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls
-      http://0.0.0.0:2379 --data-dir /etcd
+      - etcd_data:/etcd
+    command: >
+      etcd -advertise-client-urls=http://etcd:2379
+      -listen-client-urls=http://0.0.0.0:2379 --data-dir=/etcd
     healthcheck:
       test: [ "CMD", "etcdctl", "endpoint", "health" ]
       interval: 30s
@@ -18,56 +20,70 @@ services:
       retries: 3
 
   minio:
-    container_name: milvus-minio
     image: minio/minio:RELEASE.2024-05-28T17-19-04Z
+    restart: unless-stopped
     environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
+      # Modern env vars. The old MINIO_ACCESS_KEY/MINIO_SECRET_KEY names are deprecated.
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MC_HOST_local: "http://minioadmin:minioadmin@localhost:9000"
     ports:
+      # 9001 = web console (useful to inspect what Milvus wrote).
+      # 9000 (S3 API) stays internal — milvus reaches it via compose DNS at minio:9000.
       - "9001:9001"
-      - "9000:9000"
     volumes:
-      - ./volumes/minio:/minio_data
+      - minio_data:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+      test: [ "CMD", "mc", "ready", "local" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   milvus:
-    container_name: milvus-standalone
     image: milvusdb/milvus:v2.4.10
+    restart: unless-stopped
     command: [ "milvus", "run", "standalone" ]
     security_opt:
+      # required
       - seccomp:unconfined
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
     volumes:
-      - ./volumes/milvus:/var/lib/milvus
+      - milvus_data:/var/lib/milvus
+    ports:
+      - "19530:19530" # gRPC — pymilvus clients connect here
+      - "9091:9091" # HTTP healthz / metrics endpoint
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9091/healthz" ]
       interval: 30s
       start_period: 90s
       timeout: 20s
       retries: 3
-    ports:
-      - "19530:19530"
-      - "9091:9091"
     depends_on:
-      - etcd
-      - minio
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
-  # Optional: local inference. Start with `docker compose --profile local up`.
+  # Optional: local inference. Start with:
+  #   docker compose --profile local up -d
   ollama:
-    container_name: prism-ollama
     image: ollama/ollama:latest
+    restart: unless-stopped
     profiles: [ "local" ]
     ports:
       - "11434:11434"
     volumes:
-      - ./volumes/ollama:/root/.ollama
+      - ollama_data:/root/.ollama
+
+volumes:
+  etcd_data:
+  minio_data:
+  milvus_data:
+  ollama_data:
 
 networks:
   default:

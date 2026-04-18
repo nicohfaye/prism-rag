@@ -27,9 +27,9 @@ class OpenAIGenerator:
         ]
         stream = self._client.chat.completions.create(
             model=self._model,
-            messages=messages,
+            messages=messages,  # type: ignore
             stream=True,
-        )
+        )  # type: ignore
         for event in stream:
             if not event.choices:
                 continue

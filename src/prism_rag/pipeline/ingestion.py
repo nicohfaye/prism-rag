@@ -38,14 +38,32 @@ class IngestionPipeline:
         self._store = store
         self._registry = registry
 
-    def ingest_path(self, path: Path, collection: str) -> IngestionResult:
-        self._store.ensure_collection(collection, dimension=self._embedder.dimension)
+    def ingest_path(
+        self, path: Path, collection: str, force: bool = False
+    ) -> IngestionResult:
+        newly_created = self._store.ensure_collection(
+            collection, dimension=self._embedder.dimension
+        )
+        # If Milvus just created the collection, the registry's records for it
+        # are necessarily stale (the vectors they point to don't exist). Purge
+        # them so unchanged-file detection doesn't skip files that are missing
+        # from Milvus. This recovers cleanly after `docker compose down -v` or
+        # manual `collections delete`.
+        if newly_created:
+            removed = self._registry.delete_collection(collection)
+            if removed:
+                log.info(
+                    "collection '%s' was freshly created; "
+                    "purged %d stale registry record(s)",
+                    collection,
+                    removed,
+                )
         result = IngestionResult()
         for file_path in iter_supported_files(path):
             result.files_processed += 1
             try:
-                chunks_inserted = self._ingest_file(file_path, collection)
-            except Exception as exc:  # noqa: BLE001 — ingestion must not abort on one file
+                chunks_inserted = self._ingest_file(file_path, collection, force=force)
+            except Exception as exc:  # noqa: BLE001 — one file must not abort the batch
                 log.exception("failed to ingest %s", file_path)
                 result.files_failed += 1
                 result.errors.append((str(file_path), str(exc)))
@@ -57,11 +75,13 @@ class IngestionPipeline:
                 result.chunks_inserted += chunks_inserted
         return result
 
-    def _ingest_file(self, file_path: Path, collection: str) -> int | None:
+    def _ingest_file(
+        self, file_path: Path, collection: str, force: bool = False
+    ) -> int | None:
         """Return chunk count on ingest, or None when skipped as unchanged."""
         content_hash = compute_file_hash(file_path)
         existing = self._registry.get(str(file_path), collection)
-        if existing and existing.content_hash == content_hash:
+        if not force and existing and existing.content_hash == content_hash:
             log.info("skip (unchanged): %s", file_path)
             return None
 

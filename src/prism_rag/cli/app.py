@@ -15,6 +15,7 @@ from prism_rag.pipeline import (
     build_ingestion_pipeline,
     build_query_pipeline,
 )
+from prism_rag.registry import IngestionRegistry
 from prism_rag.vectorstore import MilvusStore
 
 app = typer.Typer(
@@ -50,12 +51,15 @@ def ingest(
     ctx: typer.Context,
     path: Path = typer.Argument(..., exists=True, help="File or directory to ingest."),  # noqa: B008
     collection: str = typer.Option("default", "--collection", "-c"),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Re-ingest even if the registry says unchanged."
+    ),
 ) -> None:
     """Ingest a file or directory into a Milvus collection (idempotent)."""
     settings = _settings(ctx)
     pipeline = build_ingestion_pipeline(settings, registry_path=DEFAULT_REGISTRY_PATH)
     console.print(f"[cyan]Ingesting[/] {path} → collection='{collection}'")
-    result = pipeline.ingest_path(path, collection)
+    result = pipeline.ingest_path(path, collection, force=force)
     console.print(
         f"[green]done[/] processed={result.files_processed} "
         f"ingested={result.files_ingested} "
@@ -172,11 +176,15 @@ def collections_delete(
     ctx: typer.Context,
     name: str = typer.Argument(...),
 ) -> None:
-    """Drop a collection."""
+    """Drop a collection and purge its registry entries."""
     settings = _settings(ctx)
     store = MilvusStore(uri=settings.milvus.uri)
+    registry = IngestionRegistry(DEFAULT_REGISTRY_PATH)
     store.drop_collection(name)
-    console.print(f"[green]deleted[/] '{name}'")
+    removed = registry.delete_collection(name)
+    console.print(
+        f"[green]deleted[/] '{name}' ({removed} registry record(s) purged)"
+    )
 
 
 eval_app = typer.Typer(help="Run retrieval metrics.", no_args_is_help=True)

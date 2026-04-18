@@ -94,5 +94,14 @@ class IngestionRegistry:
         )
         self._conn.commit()
 
+    def delete_collection(self, collection: str) -> int:
+        """Purge all records for a collection. Returns rows deleted."""
+        cursor = self._conn.execute(
+            "DELETE FROM ingested_files WHERE collection = ?",
+            (collection,),
+        )
+        self._conn.commit()
+        return cursor.rowcount
+
     def close(self) -> None:
         self._conn.close()

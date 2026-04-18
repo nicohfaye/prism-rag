@@ -31,7 +31,6 @@ htmlcov/
 
 # Data
 data/
-docker/volumes/
 *.db
 *.sqlite
 *.sqlite3

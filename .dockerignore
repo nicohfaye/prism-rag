@@ -8,7 +8,6 @@ __pycache__/
 htmlcov/
 .DS_Store
 data/
-docker/volumes/
 *.log
 RAG.md
 tests/

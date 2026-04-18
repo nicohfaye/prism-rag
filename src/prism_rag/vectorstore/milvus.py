@@ -74,9 +74,10 @@ class MilvusStore:
             self._client.drop_collection(name)
             log.info("dropped collection '%s'", name)
 
-    def ensure_collection(self, name: str, dimension: int) -> None:
+    def ensure_collection(self, name: str, dimension: int) -> bool:
+        """Create the collection if missing. Returns True if newly created."""
         if self._client.has_collection(name):
-            return
+            return False
         schema = _build_schema(dimension)
         index_params = self._client.prepare_index_params()
         index_params.add_index(
@@ -90,6 +91,7 @@ class MilvusStore:
             index_params=index_params,
         )
         log.info("created collection '%s' (dim=%d)", name, dimension)
+        return True
 
     def insert(
         self,
