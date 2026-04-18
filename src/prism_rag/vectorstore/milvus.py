@@ -127,6 +127,39 @@ class MilvusStore:
             return
         self._client.delete(collection_name=collection, ids=ids)
 
+    def describe_collection(self, collection: str) -> dict[str, Any]:
+        return dict(self._client.describe_collection(collection))
+
+    def count(self, collection: str, filter_expr: str = "") -> int:
+        # Milvus 2.4 lacks a dedicated count API; use count(*) via query.
+        rows = self._client.query(
+            collection_name=collection,
+            filter=filter_expr,
+            output_fields=["count(*)"],
+        )
+        if not rows:
+            return 0
+        return int(rows[0].get("count(*)", 0))
+
+    def query(
+        self,
+        collection: str,
+        filter_expr: str = "",
+        output_fields: list[str] | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Scalar-only query (no vector search). Good for browsing stored chunks."""
+        return list(
+            self._client.query(
+                collection_name=collection,
+                filter=filter_expr,
+                output_fields=output_fields or OUTPUT_FIELDS,
+                limit=limit,
+                offset=offset,
+            )
+        )
+
     def search(
         self,
         collection: str,

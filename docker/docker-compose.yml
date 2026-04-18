@@ -23,13 +23,11 @@ services:
     image: minio/minio:RELEASE.2024-05-28T17-19-04Z
     restart: unless-stopped
     environment:
-      # Modern env vars. The old MINIO_ACCESS_KEY/MINIO_SECRET_KEY names are deprecated.
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
       MC_HOST_local: "http://minioadmin:minioadmin@localhost:9000"
     ports:
       # 9001 = web console (useful to inspect what Milvus wrote).
-      # 9000 (S3 API) stays internal — milvus reaches it via compose DNS at minio:9000.
       - "9001:9001"
     volumes:
       - minio_data:/minio_data
@@ -55,7 +53,7 @@ services:
       - milvus_data:/var/lib/milvus
     ports:
       - "19530:19530" # gRPC — pymilvus clients connect here
-      - "9091:9091" # HTTP healthz / metrics endpoint
+      - "9091:9091" # health endpoint
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9091/healthz" ]
       interval: 30s

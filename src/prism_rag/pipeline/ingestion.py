@@ -38,9 +38,7 @@ class IngestionPipeline:
         self._store = store
         self._registry = registry
 
-    def ingest_path(
-        self, path: Path, collection: str, force: bool = False
-    ) -> IngestionResult:
+    def ingest_path(self, path: Path, collection: str, force: bool = False) -> IngestionResult:
         newly_created = self._store.ensure_collection(
             collection, dimension=self._embedder.dimension
         )
@@ -53,8 +51,7 @@ class IngestionPipeline:
             removed = self._registry.delete_collection(collection)
             if removed:
                 log.info(
-                    "collection '%s' was freshly created; "
-                    "purged %d stale registry record(s)",
+                    "collection '%s' was freshly created; purged %d stale registry record(s)",
                     collection,
                     removed,
                 )
@@ -75,9 +72,7 @@ class IngestionPipeline:
                 result.chunks_inserted += chunks_inserted
         return result
 
-    def _ingest_file(
-        self, file_path: Path, collection: str, force: bool = False
-    ) -> int | None:
+    def _ingest_file(self, file_path: Path, collection: str, force: bool = False) -> int | None:
         """Return chunk count on ingest, or None when skipped as unchanged."""
         content_hash = compute_file_hash(file_path)
         existing = self._registry.get(str(file_path), collection)
