@@ -4,7 +4,7 @@ from pathlib import Path
 
 import typer
 
-from prism_rag.cli.context import console, get_settings
+from prism_rag.cli.context import COLLECTION_HELP, console, get_settings, resolve_collection
 from prism_rag.pipeline import DEFAULT_REGISTRY_PATH, build_ingestion_pipeline
 
 
@@ -15,16 +15,17 @@ def register(app: typer.Typer) -> None:
 def ingest(
     ctx: typer.Context,
     path: Path = typer.Argument(..., exists=True, help="File or directory to ingest."),  # noqa: B008
-    collection: str = typer.Option("default", "--collection", "-c"),
+    collection: str | None = typer.Option(None, "--collection", "-c", help=COLLECTION_HELP),
     force: bool = typer.Option(
         False, "--force", "-f", help="Re-ingest even if the registry says unchanged."
     ),
 ) -> None:
     """Ingest a file or directory into a Milvus collection (idempotent)."""
     settings = get_settings(ctx)
+    target = resolve_collection(ctx, collection)
     pipeline = build_ingestion_pipeline(settings, registry_path=DEFAULT_REGISTRY_PATH)
-    console.print(f"[cyan]Ingesting[/] {path} → collection='{collection}'")
-    result = pipeline.ingest_path(path, collection, force=force)
+    console.print(f"[cyan]Ingesting[/] {path} → collection='{target}'")
+    result = pipeline.ingest_path(path, target, force=force)
     console.print(
         f"[green]done[/] processed={result.files_processed} "
         f"ingested={result.files_ingested} "

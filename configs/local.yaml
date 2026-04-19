@@ -1,4 +1,3 @@
-# Profile: local Ollama inference for both embeddings and generation.
 embedding:
   provider: ollama
   model: nomic-embed-text

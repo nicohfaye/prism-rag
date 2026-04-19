@@ -16,3 +16,13 @@ def get_settings(ctx: typer.Context) -> Settings:
 
 def get_profile(ctx: typer.Context) -> str:
     return ctx.obj["profile"]
+
+
+def resolve_collection(ctx: typer.Context, override: str | None) -> str:
+    """CLI flag wins; otherwise fall back to milvus.default_collection in the active profile."""
+    return override or get_settings(ctx).milvus.default_collection
+
+
+COLLECTION_HELP = (
+    "Target collection. Defaults to milvus.default_collection from the active profile."
+)

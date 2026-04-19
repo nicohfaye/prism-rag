@@ -5,7 +5,7 @@ import json
 import typer
 from rich.table import Table
 
-from prism_rag.cli.context import console, get_settings
+from prism_rag.cli.context import COLLECTION_HELP, console, get_settings, resolve_collection
 from prism_rag.cli.render import locator, preview
 from prism_rag.pipeline import build_query_pipeline
 from prism_rag.retrieval import RetrievedChunk
@@ -19,14 +19,15 @@ def register(app: typer.Typer) -> None:
 def query(
     ctx: typer.Context,
     question: str = typer.Argument(..., help="Natural-language question."),
-    collection: str = typer.Option("default", "--collection", "-c"),
+    collection: str | None = typer.Option(None, "--collection", "-c", help=COLLECTION_HELP),
     top_k: int = typer.Option(5, "--top-k", "-k"),
     stream: bool = typer.Option(True, "--stream/--no-stream"),
 ) -> None:
     """Retrieve + generate an answer with citations."""
     settings = get_settings(ctx)
+    target = resolve_collection(ctx, collection)
     pipeline = build_query_pipeline(settings)
-    chunks, tokens = pipeline.stream(question, collection, top_k)
+    chunks, tokens = pipeline.stream(question, target, top_k)
     if not chunks:
         console.print("[yellow]No context retrieved.[/]")
         return
@@ -42,14 +43,15 @@ def query(
 def retrieve(
     ctx: typer.Context,
     question: str = typer.Argument(..., help="Natural-language question."),
-    collection: str = typer.Option("default", "--collection", "-c"),
+    collection: str | None = typer.Option(None, "--collection", "-c", help=COLLECTION_HELP),
     top_k: int = typer.Option(5, "--top-k", "-k"),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON (agent-friendly)."),
 ) -> None:
     """Retrieve-only. Precursor to the MCP tool surface."""
     settings = get_settings(ctx)
+    target = resolve_collection(ctx, collection)
     pipeline = build_query_pipeline(settings)
-    chunks = pipeline.retrieve(question, collection, top_k)
+    chunks = pipeline.retrieve(question, target, top_k)
 
     if json_out:
         console.print_json(json.dumps([_chunk_to_dict(c) for c in chunks]))

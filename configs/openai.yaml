@@ -1,4 +1,3 @@
-# Profile: OpenAI-hosted embeddings and generation.
 embedding:
   provider: openai
   model: text-embedding-3-small
