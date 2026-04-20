@@ -18,12 +18,17 @@ class EmbeddingConfig(BaseModel):
     provider: Provider = "openai"
     model: str = "text-embedding-3-small"
     api_key: str | None = None
+    # Ollama host; when None, the ollama client uses http://localhost:11434.
+    base_url: str | None = None
 
 
 class GenerationConfig(BaseModel):
     provider: Provider = "openai"
     model: str = "gpt-4o-mini"
     api_key: str | None = None
+    # Same as EmbeddingConfig.base_url — lets embeddings and generation target
+    # different Ollama hosts if needed (e.g., GPU box vs local laptop).
+    base_url: str | None = None
 
 
 class MilvusConfig(BaseModel):

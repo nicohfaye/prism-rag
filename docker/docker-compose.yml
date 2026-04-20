@@ -1,4 +1,21 @@
-name: ${COMPOSE_PROJECT_NAME}
+name: ${COMPOSE_PROJECT_NAME:-prism-rag}
+
+# Usage:
+#   docker compose -f docker/docker-compose.yml up -d
+#     → Milvus stack only. Use this when you have your own Ollama running on
+#       the host (localhost:11434), or when using the `openai` prism profile.
+#
+#   docker compose -f docker/docker-compose.yml --profile with-ollama up -d
+#     → Milvus stack + a containerized Ollama with automatic model preload.
+#       Models pulled are controlled by OLLAMA_EMBED_MODEL and OLLAMA_GEN_MODEL
+#       (defaults: nomic-embed-text and gpt-oss:20b). Pulling large models
+#       blocks the ollama-bootstrap container — follow with `docker compose logs
+#       -f ollama-bootstrap` to watch progress.
+#
+# Teardown:
+#   docker compose -f docker/docker-compose.yml down -v --remove-orphans
+#   (--remove-orphans is important if the compose file has changed services.)
+
 services:
   etcd:
     image: quay.io/coreos/etcd:v3.5.14
@@ -66,16 +83,49 @@ services:
       minio:
         condition: service_healthy
 
-  # Optional: local inference. Start with:
-  #   docker compose --profile local up -d
+  # ─── with-ollama profile: containerized inference + auto model pull ────────
+  # Only activates with `--profile with-ollama`. Default stack skips these
+  # entirely, so the user's host Ollama (if any) keeps owning port 11434.
+
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
-    profiles: [ "local" ]
+    profiles: [ "with-ollama" ]
     ports:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    healthcheck:
+      # `ollama list` exits 0 once the server is up and responding.
+      test: [ "CMD-SHELL", "ollama list > /dev/null 2>&1 || exit 1" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  ollama-bootstrap:
+    # One-shot sidecar that pulls the configured models and exits. Lets the
+    # user bring the whole stack up with a single command, without shelling
+    # into containers to run `ollama pull` by hand.
+    image: ollama/ollama:latest
+    profiles: [ "with-ollama" ]
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      GEN_MODEL: ${OLLAMA_GEN_MODEL:-gpt-oss:20b}
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - |
+        set -e
+        echo "pulling embedding model: $$EMBED_MODEL"
+        ollama pull "$$EMBED_MODEL"
+        echo "pulling generation model: $$GEN_MODEL"
+        ollama pull "$$GEN_MODEL"
+        echo "done"
 
 volumes:
   etcd_data:
@@ -83,6 +133,3 @@ volumes:
   milvus_data:
   ollama_data:
 
-networks:
-  default:
-    name: prism-rag

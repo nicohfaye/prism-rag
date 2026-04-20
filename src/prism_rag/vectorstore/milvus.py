@@ -75,8 +75,20 @@ class MilvusStore:
             log.info("dropped collection '%s'", name)
 
     def ensure_collection(self, name: str, dimension: int) -> bool:
-        """Create the collection if missing. Returns True if newly created."""
+        """Create the collection if missing. Returns True if newly created.
+
+        If the collection already exists with a *different* embedding dimension,
+        raises ValueError. Protects against silent corruption when swapping
+        embedding providers (e.g., OpenAI 1536 → Ollama 768).
+        """
         if self._client.has_collection(name):
+            actual_dim = self._collection_dim(name)
+            if actual_dim != dimension:
+                raise ValueError(
+                    f"Collection '{name}' has dim={actual_dim} but the "
+                    f"configured embedder produces dim={dimension}. "
+                    f"Use a different collection name or drop '{name}' first."
+                )
             return False
         schema = _build_schema(dimension)
         index_params = self._client.prepare_index_params()
@@ -129,6 +141,22 @@ class MilvusStore:
 
     def describe_collection(self, collection: str) -> dict[str, Any]:
         return dict(self._client.describe_collection(collection))
+
+    def _collection_dim(self, collection: str) -> int:
+        """Return the embedding-field dimension of an existing collection."""
+        description = self.describe_collection(collection)
+        for field in description.get("fields", []):
+            if field.get("name") == F_EMBEDDING:
+                params = field.get("params", {}) or {}
+                dim = params.get("dim") or field.get("dim")
+                if isinstance(dim, int):
+                    return dim
+                if isinstance(dim, str) and dim.isdigit():
+                    return int(dim)
+                break
+        raise RuntimeError(
+            f"Could not read embedding dimension for collection '{collection}'."
+        )
 
     def count(self, collection: str, filter_expr: str = "") -> int:
         # Milvus 2.4 lacks a dedicated count API; use count(*) via query.

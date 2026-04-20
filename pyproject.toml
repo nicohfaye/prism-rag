@@ -17,6 +17,7 @@ dependencies = [
     "pymilvus>=2.4",
     "openai>=1.50",
     "tiktoken>=0.7",
+    "ollama>=0.3",
 ]
 
 [project.scripts]

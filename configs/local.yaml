@@ -3,7 +3,8 @@ embedding:
   model: nomic-embed-text
 generation:
   provider: ollama
-  model: gpt-oss:20b
+  #model: gpt-oss:20b
+  model: llama3.2:3b
 milvus:
   uri: http://localhost:19530
   default_collection: prism_default
