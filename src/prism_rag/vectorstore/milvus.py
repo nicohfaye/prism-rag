@@ -154,9 +154,7 @@ class MilvusStore:
                 if isinstance(dim, str) and dim.isdigit():
                     return int(dim)
                 break
-        raise RuntimeError(
-            f"Could not read embedding dimension for collection '{collection}'."
-        )
+        raise RuntimeError(f"Could not read embedding dimension for collection '{collection}'.")
 
     def count(self, collection: str, filter_expr: str = "") -> int:
         # Milvus 2.4 lacks a dedicated count API; use count(*) via query.
