@@ -38,3 +38,5 @@ data/
 # Logs
 *.log
 logs/
+
+benchmarks/
