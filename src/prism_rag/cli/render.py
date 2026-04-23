@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-# Rendering helpers shared across commands.
+# Presentation helpers shared across CLI commands. Purely about text rendering —
+# storage-layer concerns like sentinel decoding live in prism_rag.vectorstore.
 
 PREVIEW_CHARS = 160
 
@@ -10,13 +11,6 @@ def preview(text: str | None, limit: int = PREVIEW_CHARS) -> str:
     if not text:
         return ""
     return text if len(text) <= limit else text[:limit] + "…"
-
-
-def decode_page(page: int | None) -> int | None:
-    """Milvus stores page=-1 as a sentinel for 'no page'. Convert back to None."""
-    if page is None or page == -1:
-        return None
-    return page
 
 
 def locator(source_path: str, page: int | None, chunk_index: int) -> str:

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from prism_rag.embeddings.base import Embedder
-from prism_rag.vectorstore.milvus import (
+from prism_rag.vectorstore import (
     F_CHUNK_INDEX,
     F_HEADING_PATH,
     F_ID,
@@ -14,6 +14,8 @@ from prism_rag.vectorstore.milvus import (
     F_SOURCE_TYPE,
     F_TEXT,
     MilvusStore,
+    decode_heading,
+    decode_page,
 )
 
 log = logging.getLogger(__name__)
@@ -47,17 +49,13 @@ class DenseRetriever:
 def _to_chunk(row: dict[str, Any]) -> RetrievedChunk:
     # MilvusClient returns {"id": ..., "distance": ..., "entity": {...}}.
     entity = row.get("entity") or row
-    page = entity.get(F_PAGE)
-    if page == -1:
-        page = None
-    heading = entity.get(F_HEADING_PATH) or None
     return RetrievedChunk(
         id=str(row.get("id") or entity.get(F_ID, "")),
         text=entity.get(F_TEXT, ""),
         source_path=entity.get(F_SOURCE_PATH, ""),
         source_type=entity.get(F_SOURCE_TYPE, ""),
         chunk_index=int(entity.get(F_CHUNK_INDEX, 0)),
-        heading_path=heading,
-        page=page,
+        heading_path=decode_heading(entity.get(F_HEADING_PATH)),
+        page=decode_page(entity.get(F_PAGE)),
         score=float(row.get("distance", 0.0)),
     )

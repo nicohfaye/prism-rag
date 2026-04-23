@@ -7,11 +7,11 @@ import typer
 from rich.table import Table
 
 from prism_rag.cli.context import console, get_settings
-from prism_rag.cli.render import decode_page, locator, meta_cell, preview
+from prism_rag.cli.render import locator, meta_cell, preview
 from prism_rag.embeddings import build_embedder
 from prism_rag.pipeline import DEFAULT_REGISTRY_PATH
 from prism_rag.registry import IngestionRegistry
-from prism_rag.vectorstore import MilvusStore
+from prism_rag.vectorstore import MilvusStore, decode_page
 
 # Fields read from Milvus for the `show` command.
 _SHOW_FIELDS = [

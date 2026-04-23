@@ -3,57 +3,17 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
+from pymilvus import MilvusClient
 
 from prism_rag.chunking import Chunk
+from prism_rag.vectorstore.encoding import chunk_to_row
+from prism_rag.vectorstore.schema import F_EMBEDDING, OUTPUT_FIELDS, build_schema
 
 log = logging.getLogger(__name__)
 
-# Field names — kept as constants so retrieval and schema agree.
-F_ID = "id"
-F_EMBEDDING = "embedding"
-F_TEXT = "text"
-F_SOURCE_PATH = "source_path"
-F_SOURCE_TYPE = "source_type"
-F_CONTENT_HASH = "content_hash"
-F_CHUNK_INDEX = "chunk_index"
-F_CHUNK_HASH = "chunk_hash"
-F_HEADING_PATH = "heading_path"
-F_PAGE = "page"
-F_INGESTED_AT = "ingested_at"
-
-OUTPUT_FIELDS = [
-    F_ID,
-    F_TEXT,
-    F_SOURCE_PATH,
-    F_SOURCE_TYPE,
-    F_CONTENT_HASH,
-    F_CHUNK_INDEX,
-    F_HEADING_PATH,
-    F_PAGE,
-    F_INGESTED_AT,
-]
-
-
-def _build_schema(dimension: int) -> CollectionSchema:
-    fields = [
-        FieldSchema(F_ID, DataType.VARCHAR, is_primary=True, max_length=128),
-        FieldSchema(F_EMBEDDING, DataType.FLOAT_VECTOR, dim=dimension),
-        FieldSchema(F_TEXT, DataType.VARCHAR, max_length=8192),
-        FieldSchema(F_SOURCE_PATH, DataType.VARCHAR, max_length=1024),
-        FieldSchema(F_SOURCE_TYPE, DataType.VARCHAR, max_length=32),
-        FieldSchema(F_CONTENT_HASH, DataType.VARCHAR, max_length=128),
-        FieldSchema(F_CHUNK_INDEX, DataType.INT64),
-        FieldSchema(F_CHUNK_HASH, DataType.VARCHAR, max_length=128),
-        FieldSchema(F_HEADING_PATH, DataType.VARCHAR, max_length=512),
-        FieldSchema(F_PAGE, DataType.INT64),
-        FieldSchema(F_INGESTED_AT, DataType.VARCHAR, max_length=64),
-    ]
-    return CollectionSchema(fields=fields, description="Prism-RAG chunk store")
-
 
 class MilvusStore:
-    """Thin wrapper over pymilvus MilvusClient (2.4+) with schema + helpers."""
+    """Thin wrapper over pymilvus MilvusClient (2.4+)."""
 
     def __init__(self, uri: str) -> None:
         self._uri = uri
@@ -64,10 +24,10 @@ class MilvusStore:
         return self._uri
 
     def has_collection(self, name: str) -> bool:
-        return self._client.has_collection(name)
+        return self._client.has_collection(name)  # type: ignore
 
     def list_collections(self) -> list[str]:
-        return list(self._client.list_collections())
+        return list(self._client.list_collections())  # type: ignore
 
     def drop_collection(self, name: str) -> None:
         if self._client.has_collection(name):
@@ -77,20 +37,21 @@ class MilvusStore:
     def ensure_collection(self, name: str, dimension: int) -> bool:
         """Create the collection if missing. Returns True if newly created.
 
-        If the collection already exists with a *different* embedding dimension,
+        If the collection already exists with a different embedding dimension,
         raises ValueError. Protects against silent corruption when swapping
         embedding providers (e.g., OpenAI 1536 → Ollama 768).
         """
         if self._client.has_collection(name):
-            actual_dim = self._collection_dim(name)
-            if actual_dim != dimension:
+            actual = self._collection_dim(name)
+            if actual != dimension:
                 raise ValueError(
-                    f"Collection '{name}' has dim={actual_dim} but the "
-                    f"configured embedder produces dim={dimension}. "
+                    f"Collection '{name}' has dim={actual} but the configured "
+                    f"embedder produces dim={dimension}. "
                     f"Use a different collection name or drop '{name}' first."
                 )
             return False
-        schema = _build_schema(dimension)
+
+        schema = build_schema(dimension)
         index_params = self._client.prepare_index_params()
         index_params.add_index(
             field_name=F_EMBEDDING,
@@ -98,9 +59,7 @@ class MilvusStore:
             metric_type="COSINE",
         )
         self._client.create_collection(
-            collection_name=name,
-            schema=schema,
-            index_params=index_params,
+            collection_name=name, schema=schema, index_params=index_params
         )
         log.info("created collection '%s' (dim=%d)", name, dimension)
         return True
@@ -115,23 +74,7 @@ class MilvusStore:
             return
         if len(chunks) != len(embeddings):
             raise ValueError("chunks and embeddings must have equal length")
-        rows: list[dict[str, Any]] = []
-        for chunk, vec in zip(chunks, embeddings, strict=True):
-            rows.append(
-                {
-                    F_ID: chunk.id,
-                    F_EMBEDDING: vec,
-                    F_TEXT: chunk.text,
-                    F_SOURCE_PATH: chunk.source_path,
-                    F_SOURCE_TYPE: chunk.source_type,
-                    F_CONTENT_HASH: chunk.content_hash,
-                    F_CHUNK_INDEX: chunk.chunk_index,
-                    F_CHUNK_HASH: chunk.chunk_hash,
-                    F_HEADING_PATH: chunk.heading_path or "",
-                    F_PAGE: chunk.page if chunk.page is not None else -1,
-                    F_INGESTED_AT: chunk.ingested_at,
-                }
-            )
+        rows = [chunk_to_row(c, e) for c, e in zip(chunks, embeddings, strict=True)]
         self._client.insert(collection_name=collection, data=rows)
 
     def delete_ids(self, collection: str, ids: list[str]) -> None:
@@ -140,7 +83,7 @@ class MilvusStore:
         self._client.delete(collection_name=collection, ids=ids)
 
     def describe_collection(self, collection: str) -> dict[str, Any]:
-        return dict(self._client.describe_collection(collection))
+        return dict(self._client.describe_collection(collection))  # type: ignore
 
     def _collection_dim(self, collection: str) -> int:
         """Return the embedding-field dimension of an existing collection."""
@@ -175,7 +118,7 @@ class MilvusStore:
         limit: int = 20,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
-        """Scalar-only query (no vector search). Good for browsing stored chunks."""
+        """Scalar-only query (no vector search). For browsing stored chunks."""
         return list(
             self._client.query(
                 collection_name=collection,

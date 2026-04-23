@@ -3,7 +3,8 @@ embedding:
   model: text-embedding-3-small
 generation:
   provider: openai
-  model: gpt-4o-mini
+  #model: gpt-4o-mini
+  model: gpt-5.4-nano
 milvus:
   uri: http://localhost:19530
   default_collection: prism_default

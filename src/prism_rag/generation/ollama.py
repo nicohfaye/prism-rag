@@ -26,9 +26,7 @@ class OllamaGenerator:
             {"role": "user", "content": build_user_message(question, context)},
         ]
         try:
-            stream = self._client.chat(
-                model=self._model, messages=messages, stream=True
-            )
+            stream = self._client.chat(model=self._model, messages=messages, stream=True)
             for event in stream:
                 # Each event is a dict-like; content lives at event["message"]["content"].
                 content = event.get("message", {}).get("content")

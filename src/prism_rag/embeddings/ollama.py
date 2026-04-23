@@ -47,7 +47,7 @@ class OllamaEmbedder:
         log.debug("probing embedding dimension for '%s'", self._model)
         return len(self._embed_one("dimension probe"))
 
-    def _raise_if_missing_model(self, exc: "ollama.ResponseError") -> None:
+    def _raise_if_missing_model(self, exc: ollama.ResponseError) -> None:
         msg = str(exc).lower()
         if "not found" in msg or "no such model" in msg:
             raise ModelNotPulledError(
